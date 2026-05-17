@@ -6,7 +6,6 @@ WORKDIR /app
 COPY package*.json ./
 COPY client/package*.json ./client/
 COPY server/package*.json ./server/
-COPY shared/package*.json ./shared/
 
 # Install everything to build
 RUN npm run install:all
