@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env';
+import fs from 'fs';
 import path from 'path';
 import './config/passport';
 import passport from 'passport';
@@ -56,9 +57,11 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// ─── Serve Frontend in Production ─────────────────────────────────────────────
-if (env.NODE_ENV === 'production') {
-  const clientDist = path.join(__dirname, '../../client/dist');
+// ─── Serve Frontend When Available ────────────────────────────────────────────
+const clientDist = path.join(__dirname, '../../client/dist');
+const hasBuiltClient = fs.existsSync(path.join(clientDist, 'index.html'));
+
+if (hasBuiltClient) {
   app.use(express.static(clientDist));
 
   // Express 5 rejects the legacy "*" catch-all. Use a regex fallback for the SPA.
