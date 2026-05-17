@@ -1,0 +1,8 @@
+# Pomodoro App
+
+.env
+node_modules
+dist
+.DS_Store
+*.log
+drizzle/
