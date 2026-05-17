@@ -70,7 +70,8 @@ export const AuthPage: React.FC = () => {
 
       <div className="w-full max-w-md animate-slide-up relative z-10">
         {/* Logo */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-8 flex flex-col items-center">
+          <img src="/favicon.png" alt="Zenin" className="w-16 h-16 invert opacity-80 mb-4" />
           <h1 className="text-3xl font-bold text-gradient">Zenin</h1>
           <p className="text-white/50 mt-1 text-sm">Focus. Break. Repeat.</p>
         </div>
