@@ -6,8 +6,39 @@ import path from 'path';
 
 dotenv.config();
 
-// Create SQLite database
-const dbUrl = process.env.DATABASE_URL || `file:${path.join(process.cwd(), 'sqlite.db')}`;
+const defaultDbUrl = `file:${path.join(process.cwd(), 'sqlite.db')}`;
+
+const normalizeDatabaseUrl = (value?: string): string => {
+  const raw = value?.trim();
+  if (!raw) return defaultDbUrl;
+
+  const parts = raw
+    .split('||')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const candidate = parts[0];
+
+  if (!candidate) return defaultDbUrl;
+
+  if (parts.length > 1) {
+    console.warn('⚠️ DATABASE_URL contained "||". Using the first value only.');
+  }
+
+  if (/^(file|libsql|https?):/i.test(candidate)) {
+    return candidate;
+  }
+
+  if (candidate.endsWith('.db')) {
+    const localPath = path.isAbsolute(candidate)
+      ? candidate
+      : path.join(process.cwd(), candidate);
+    return `file:${localPath}`;
+  }
+
+  return candidate;
+};
+
+const dbUrl = normalizeDatabaseUrl(process.env.DATABASE_URL);
 const authToken = process.env.DATABASE_AUTH_TOKEN;
 
 const client = createClient({
