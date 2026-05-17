@@ -36,7 +36,7 @@ export const TimerPage: React.FC = () => {
   const { isLeader, followerState } = useTabLeader();
 
   const {
-    phase, secondsLeft, totalSeconds, isRunning, sessionCount,
+    phase, secondsLeft, totalSeconds, isRunning,
     activeTaskId, currentSessionId,
     setPhase, setSecondsLeft, setTotalSeconds, setIsRunning, incrementSession,
     resetTimer, setActiveTaskId, setCurrentSessionId,
