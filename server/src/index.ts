@@ -60,7 +60,9 @@ app.use('/api/analytics', analyticsRoutes);
 if (env.NODE_ENV === 'production') {
   const clientDist = path.join(__dirname, '../../client/dist');
   app.use(express.static(clientDist));
-  app.get('*', (req, res) => {
+
+  // Express 5 rejects the legacy "*" catch-all. Use a regex fallback for the SPA.
+  app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
     res.sendFile(path.resolve(clientDist, 'index.html'));
   });
 }
