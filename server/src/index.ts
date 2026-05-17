@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env';
+import fs from 'fs';
 import path from 'path';
 import './config/passport';
 import passport from 'passport';
@@ -13,7 +14,7 @@ import tasksRoutes from './routes/tasks.routes';
 import sessionsRoutes from './routes/sessions.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import { errorHandler, notFound } from './middleware/error.middleware';
-import { checkDbHealth } from './db';
+import { checkDbHealth, ensureSchema } from './db';
 
 const app = express();
 
@@ -37,7 +38,6 @@ if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/health', async (_req, res) => {
   const db = await checkDbHealth();
@@ -56,12 +56,19 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// ─── Serve Frontend in Production ─────────────────────────────────────────────
-if (env.NODE_ENV === 'production') {
-  const clientDist = path.join(__dirname, '../../client/dist');
+// ─── Serve Frontend When Available ────────────────────────────────────────────
+const clientDist = path.join(__dirname, '../../client/dist');
+const clientIndexPath = path.join(clientDist, 'index.html');
+
+if (!fs.existsSync(clientIndexPath)) {
+  console.warn(`⚠️ Frontend build not found at ${clientIndexPath}`);
+} else {
   app.use(express.static(clientDist));
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(clientDist, 'index.html'));
+
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    res.sendFile(clientIndexPath);
   });
 }
 
@@ -71,8 +78,18 @@ app.use(errorHandler);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = parseInt(env.PORT, 10);
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT} [${env.NODE_ENV}]`);
+
+const startServer = async (): Promise<void> => {
+  await ensureSchema();
+
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT} [${env.NODE_ENV}]`);
+  });
+};
+
+void startServer().catch((error) => {
+  console.error('❌ Failed to initialize server:', error);
+  process.exit(1);
 });
 
 export default app;
