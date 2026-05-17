@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env';
-import fs from 'fs';
 import path from 'path';
 import './config/passport';
 import passport from 'passport';
@@ -14,6 +13,7 @@ import tasksRoutes from './routes/tasks.routes';
 import sessionsRoutes from './routes/sessions.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import { errorHandler, notFound } from './middleware/error.middleware';
+import { checkDbHealth } from './db';
 
 const app = express();
 
@@ -37,7 +37,6 @@ if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-import { checkDbHealth } from './db';
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get('/health', async (_req, res) => {
@@ -57,15 +56,11 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// ─── Serve Frontend When Available ────────────────────────────────────────────
-const clientDist = path.join(__dirname, '../../client/dist');
-const hasBuiltClient = fs.existsSync(path.join(clientDist, 'index.html'));
-
-if (hasBuiltClient) {
+// ─── Serve Frontend in Production ─────────────────────────────────────────────
+if (env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '../../client/dist');
   app.use(express.static(clientDist));
-
-  // Express 5 rejects the legacy "*" catch-all. Use a regex fallback for the SPA.
-  app.get(/^(?!\/api(?:\/|$)).*/, (_req, res) => {
+  app.get('*', (req, res) => {
     res.sendFile(path.resolve(clientDist, 'index.html'));
   });
 }

@@ -17,7 +17,20 @@ const normalizeDatabaseUrl = (value?: string): string => {
 
   if (!candidate) return defaultDbUrl;
 
+  const tursoHost = candidate
+    .replace(/^file:(\/\/)?/i, '')
+    .replace(/^https?:\/\//i, '')
+    .replace(/^libsql:\/\//i, '');
+
+  if (/\.turso\.io(?:\/.*)?$/i.test(tursoHost)) {
+    return `libsql://${tursoHost}`;
+  }
+
   if (/^(file|libsql|https?):/i.test(candidate)) {
+    if (candidate.startsWith('https://')) {
+      return `libsql://${candidate.slice('https://'.length)}`;
+    }
+
     return candidate;
   }
 
@@ -31,10 +44,10 @@ const normalizeDatabaseUrl = (value?: string): string => {
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
-  dialect: 'sqlite',
+  dialect: 'turso',
   dbCredentials: {
     url: normalizeDatabaseUrl(process.env.DATABASE_URL),
-    token: process.env.DATABASE_AUTH_TOKEN,
+    authToken: process.env.DATABASE_AUTH_TOKEN,
   },
   verbose: true,
   strict: false,
