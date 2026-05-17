@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env';
+import path from 'path';
 import './config/passport';
 import passport from 'passport';
 import authRoutes from './routes/auth.routes';
@@ -58,6 +59,15 @@ app.use('/api/analytics', analyticsRoutes);
 // ─── Error Handling ───────────────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
+
+// ─── Serve Frontend in Production ─────────────────────────────────────────────
+if (env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '../../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(clientDist, 'index.html'));
+  });
+}
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = parseInt(env.PORT, 10);
