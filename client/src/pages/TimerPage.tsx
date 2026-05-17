@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Play, Pause, RotateCcw, SkipForward, WifiOff, MonitorSmartphone } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { RotateCcw, SkipForward, WifiOff, MonitorSmartphone } from 'lucide-react';
 import { useTimerStore } from '../store/timerStore';
 import type { TimerPhase } from '../store/timerStore';
 import { settingsApi, sessionsApi, tasksApi } from '../api';
@@ -294,15 +293,15 @@ export const TimerPage: React.FC = () => {
       </div>
 
       {/* Phase selection */}
-      <div className="flex gap-6 mb-16 text-sm tracking-wide font-light">
+      <div className="flex gap-10 mb-16 text-xl tracking-wider font-light">
         {(Object.keys(phaseLabels) as TimerPhase[]).map((p) => (
           <button
             key={p}
             onClick={() => switchPhase(p)}
             disabled={displayRunning || !isLeader}
             className={cn(
-              'transition-opacity duration-300 disabled:cursor-not-allowed',
-              displayPhase === p ? 'opacity-100 font-normal' : 'opacity-30 hover:opacity-70'
+              'transition-all duration-300 disabled:cursor-not-allowed uppercase',
+              displayPhase === p ? 'opacity-100 font-medium scale-105' : 'opacity-30 hover:opacity-70'
             )}
           >
             {phaseLabels[p]}
