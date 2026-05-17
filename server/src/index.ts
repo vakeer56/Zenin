@@ -56,10 +56,6 @@ app.use('/api/tasks', tasksRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// ─── Error Handling ───────────────────────────────────────────────────────────
-app.use(notFound);
-app.use(errorHandler);
-
 // ─── Serve Frontend in Production ─────────────────────────────────────────────
 if (env.NODE_ENV === 'production') {
   const clientDist = path.join(__dirname, '../../client/dist');
@@ -68,6 +64,10 @@ if (env.NODE_ENV === 'production') {
     res.sendFile(path.resolve(clientDist, 'index.html'));
   });
 }
+
+// ─── Error Handling ───────────────────────────────────────────────────────────
+app.use(notFound);
+app.use(errorHandler);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 const PORT = parseInt(env.PORT, 10);
