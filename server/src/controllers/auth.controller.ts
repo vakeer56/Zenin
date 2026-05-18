@@ -28,8 +28,11 @@ const loginSchema = z.object({
 
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  // `none` is required for iOS PWA: Safari treats the home-screen app as a
+  // separate browsing context, so `lax` cookies are not sent on cross-context
+  // requests. `none` + `secure` ensures the refresh cookie always travels.
+  secure: true, // must be true when sameSite is 'none'
+  sameSite: 'none' as const,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: '/api/auth',
 };
@@ -122,7 +125,7 @@ export const logout = async (
     if (token && req.userId) {
       await revokeRefreshToken(req.userId, token);
     }
-    res.clearCookie('refreshToken', { path: '/api/auth' });
+    res.clearCookie('refreshToken', { path: '/api/auth', secure: true, sameSite: 'none' });
     res.json({ success: true, data: null, message: 'Logged out successfully' });
   } catch (err) {
     next(err);
