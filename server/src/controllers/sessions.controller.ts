@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { db } from '../db';
-import { pomodoroSessions, tasks } from '../db/schema';
+import { pomodoroSessions, tasks, settings } from '../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { z } from 'zod';
@@ -13,6 +13,11 @@ const startSessionSchema = z.object({
 
 const endSessionSchema = z.object({
   completed: z.boolean().default(true),
+});
+
+const manualSessionSchema = z.object({
+  taskId: z.string().uuid().optional(),
+  durationMinutes: z.number().int().min(1).max(1440),
 });
 
 export const startSession = async (
@@ -90,6 +95,99 @@ export const getSessions = async (
       .offset(offset);
 
     res.json({ success: true, data: userSessions });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const addManualSession = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { taskId, durationMinutes } = manualSessionSchema.parse(req.body);
+    
+    const durationSeconds = durationMinutes * 60;
+    const endedAt = new Date();
+    const startedAt = new Date(endedAt.getTime() - durationSeconds * 1000);
+
+    const [session] = await db
+      .insert(pomodoroSessions)
+      .values({
+        userId: req.userId!,
+        taskId,
+        type: 'work',
+        durationSeconds,
+        startedAt,
+        endedAt,
+        completed: true,
+      })
+      .returning();
+
+    if (taskId) {
+      // Calculate how many pomodoros this is worth
+      const [userSettings] = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.userId, req.userId!));
+      
+      const workDuration = userSettings?.workDuration || 25;
+      const pomodorosToAdd = Math.max(1, Math.round(durationMinutes / workDuration));
+
+      await db
+        .update(tasks)
+        .set({
+          completedPomodoros: sql`${tasks.completedPomodoros} + ${pomodorosToAdd}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(tasks.id, taskId));
+    }
+
+    res.status(201).json({ success: true, data: session });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteSession = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    
+    const [session] = await db
+      .select()
+      .from(pomodoroSessions)
+      .where(and(eq(pomodoroSessions.id, id), eq(pomodoroSessions.userId, req.userId!)));
+      
+    if (!session) {
+      res.status(404).json({ success: false, error: 'Session not found' });
+      return;
+    }
+    
+    await db.delete(pomodoroSessions).where(eq(pomodoroSessions.id, id));
+    
+    if (session.taskId && session.completed && session.type === 'work') {
+      const [userSettings] = await db
+        .select()
+        .from(settings)
+        .where(eq(settings.userId, req.userId!));
+      const workDuration = userSettings?.workDuration || 25;
+      const pomodorosToDeduct = Math.max(1, Math.round(session.durationSeconds / 60 / workDuration));
+      
+      await db
+        .update(tasks)
+        .set({
+          completedPomodoros: sql`MAX(0, ${tasks.completedPomodoros} - ${pomodorosToDeduct})`,
+          updatedAt: new Date()
+        })
+        .where(eq(tasks.id, session.taskId));
+    }
+    
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }

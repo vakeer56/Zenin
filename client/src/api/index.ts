@@ -37,8 +37,11 @@ export const sessionsApi = {
   list: (page = 1) => api.get<{ success: true; data: PomodoroSession[] }>(`/sessions?page=${page}`),
   start: (data: { taskId?: string; type: PomodoroSession['type']; durationSeconds: number }) =>
     api.post<{ success: true; data: PomodoroSession }>('/sessions', data),
+  manual: (data: { durationMinutes: number; taskId?: string }) =>
+    api.post<{ success: true; data: PomodoroSession }>('/sessions/manual', data),
   end: (id: string, completed = true) =>
     api.patch<{ success: true; data: PomodoroSession }>(`/sessions/${id}/end`, { completed }),
+  delete: (id: string) => api.delete<{ success: true }>(`/sessions/${id}`),
 };
 
 // ─── Analytics ────────────────────────────────────────────────────────────────

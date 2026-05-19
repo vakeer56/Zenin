@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
-import { Flame, Clock, Target, TrendingUp } from 'lucide-react';
-import { analyticsApi } from '../api';
+import { Flame, Clock, Target, TrendingUp, Plus, Trash2 } from 'lucide-react';
+import { analyticsApi, sessionsApi, tasksApi } from '../api';
 import { Card } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
 const StatCard: React.FC<{
@@ -41,7 +44,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const AnalyticsPage: React.FC = () => {
+  const qc = useQueryClient();
   const [days, setDays] = useState<7 | 30>(7);
+  const [showLogTime, setShowLogTime] = useState(false);
+  const [logMinutes, setLogMinutes] = useState('');
+  const [logTaskId, setLogTaskId] = useState('');
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
     queryKey: ['analytics', 'summary'],
@@ -51,6 +58,49 @@ export const AnalyticsPage: React.FC = () => {
   const { data: daily, isLoading: dailyLoading } = useQuery({
     queryKey: ['analytics', 'daily', days],
     queryFn: () => analyticsApi.daily(days).then((r) => r.data.data),
+  });
+
+  const { data: tasksData } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: () => tasksApi.list().then((r) => r.data.data),
+  });
+  const activeTasks = (tasksData ?? []).filter((t) => !t.isCompleted);
+
+  const logTimeMutation = useMutation({
+    mutationFn: (data: { durationMinutes: number; taskId?: string }) => sessionsApi.manual(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['analytics'] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      toast.success('Time logged successfully!');
+      setShowLogTime(false);
+      setLogMinutes('');
+      setLogTaskId('');
+    },
+    onError: () => toast.error('Failed to log time'),
+  });
+
+  const handleLogTime = (e: React.FormEvent) => {
+    e.preventDefault();
+    const mins = parseInt(logMinutes);
+    if (!mins || mins <= 0) return toast.error('Please enter a valid duration');
+    logTimeMutation.mutate({ durationMinutes: mins, taskId: logTaskId || undefined });
+  };
+
+  const { data: sessionsData, isLoading: sessionsLoading } = useQuery({
+    queryKey: ['sessions', 1],
+    queryFn: () => sessionsApi.list(1).then((r) => r.data.data),
+  });
+  const recentSessions = (sessionsData ?? []).slice(0, 5);
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: (id: string) => sessionsApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['analytics'] });
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+      qc.invalidateQueries({ queryKey: ['sessions'] });
+      toast.success('Session deleted');
+    },
+    onError: () => toast.error('Failed to delete session'),
   });
 
   const chartData = (daily ?? []).map((d) => ({
@@ -63,10 +113,49 @@ export const AnalyticsPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6 animate-fade-in">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-white/40 text-sm mt-1">Track your focus journey</p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold">Analytics</h1>
+          <p className="text-white/40 text-sm mt-1">Track your focus journey</p>
+        </div>
+        <Button onClick={() => setShowLogTime(!showLogTime)} className="text-sm h-9 px-4">
+          {showLogTime ? 'Cancel' : 'Log Time'}
+        </Button>
       </div>
+
+      {showLogTime && (
+        <Card className="mb-8 p-5 bg-white/[0.02] border-white/10">
+          <form onSubmit={handleLogTime} className="flex flex-col sm:flex-row gap-4 items-end">
+            <div className="flex-1 w-full">
+              <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">Duration (minutes)</label>
+              <Input
+                type="number"
+                min={1}
+                value={logMinutes}
+                onChange={(e) => setLogMinutes(e.target.value)}
+                placeholder="e.g. 25"
+                required
+              />
+            </div>
+            <div className="flex-1 w-full">
+              <label className="text-xs text-white/50 mb-1.5 block uppercase tracking-wider">Task (optional)</label>
+              <select
+                value={logTaskId}
+                onChange={(e) => setLogTaskId(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-500/50 transition-colors h-[42px]"
+              >
+                <option value="">No Task (General)</option>
+                {activeTasks.map((t) => (
+                  <option key={t.id} value={t.id}>{t.title}</option>
+                ))}
+              </select>
+            </div>
+            <Button type="submit" loading={logTimeMutation.isPending} className="w-full sm:w-auto h-[42px]">
+              <Plus size={16} className="mr-1" /> Add Time
+            </Button>
+          </form>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -160,6 +249,38 @@ export const AnalyticsPage: React.FC = () => {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        )}
+      </Card>
+
+      {/* Recent Sessions */}
+      <Card className="mt-8">
+        <h2 className="font-semibold mb-4">Recent Sessions</h2>
+        {sessionsLoading ? (
+          <div className="text-white/30 py-4 text-center text-sm">Loading…</div>
+        ) : recentSessions.length === 0 ? (
+          <div className="text-white/30 py-4 text-center text-sm">No recent sessions found.</div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {recentSessions.map(session => (
+              <div key={session.id} className="flex items-center justify-between p-3 glass rounded-xl">
+                <div>
+                  <p className="text-sm font-medium">
+                    {session.type === 'work' ? 'Focus Session' : 'Break'}
+                  </p>
+                  <p className="text-xs text-white/40">
+                    {format(new Date(session.startedAt), 'MMM d, h:mm a')} • {Math.round(session.durationSeconds / 60)} min
+                  </p>
+                </div>
+                <button
+                  onClick={() => deleteSessionMutation.mutate(session.id)}
+                  disabled={deleteSessionMutation.isPending}
+                  className="p-2 text-white/30 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </Card>
     </div>
