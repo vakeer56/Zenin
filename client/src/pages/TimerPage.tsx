@@ -100,8 +100,20 @@ export const TimerPage: React.FC = () => {
     }
   }, [settings]);
 
+  const settingsRef      = useRef(settings);
+  const phaseRef         = useRef(phase);
+  const sessionIdRef     = useRef(currentSessionId);
+  const intervalRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const handleCompleteRef = useRef<(() => Promise<void>) | undefined>(undefined);
+  // Keep a ref to startPhase so handleCompleteRef never captures a stale closure.
+  const startPhaseRef    = useRef<((phase?: TimerPhase) => Promise<void>) | undefined>(undefined);
+  // Prevent the mount reconciliation from running more than once.
+  const hasReconciledRef = useRef(false);
+
   useEffect(() => {
     if (!isLeader) return;
+    if (hasReconciledRef.current) return; // only reconcile once
+    hasReconciledRef.current = true;
     const storedSessionId = useTimerStore.getState().currentSessionId;
     const wasRunning = useTimerStore.getState().runStartedAt !== null;
 
@@ -116,7 +128,7 @@ export const TimerPage: React.FC = () => {
           incrementSession();
         } else {
           setSecondsLeft(trueSecs);
-          clearRunStart();
+          markRunStart(trueSecs);
         }
       } else {
         endSessionMutation.mutate({ id: storedSessionId, completed: false });
@@ -125,16 +137,9 @@ export const TimerPage: React.FC = () => {
     }
   }, [isLeader]);
 
-  const settingsRef  = useRef(settings);
-  const phaseRef     = useRef(phase);
-  const sessionIdRef = useRef(currentSessionId);
-
   useEffect(() => { settingsRef.current = settings; }, [settings]);
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { sessionIdRef.current = currentSessionId; }, [currentSessionId]);
-
-  const intervalRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const handleCompleteRef = useRef<(() => Promise<void>) | undefined>(undefined);
 
   useEffect(() => {
     if (!isLeader) return;
@@ -146,7 +151,7 @@ export const TimerPage: React.FC = () => {
           handleCompleteRef.current?.();
         } else {
           setSecondsLeft(trueSecs);
-          markRunStart(); 
+          markRunStart(trueSecs);
         }
       }
       void (window as any).__audioCtx?.resume?.();
@@ -176,13 +181,13 @@ export const TimerPage: React.FC = () => {
         const newCount = useTimerStore.getState().sessionCount;
         const nextPhase: TimerPhase = newCount % currentSettings.sessionsBeforeLong === 0 ? 'long_break' : 'short_break';
         setPhase(nextPhase, currentSettings);
-        if (currentSettings.autoStartBreaks) setTimeout(() => startPhase(nextPhase), 300);
+        if (currentSettings.autoStartBreaks) setTimeout(() => startPhaseRef.current?.(nextPhase), 300);
       }
     } else {
       await playSound('break_complete');
       if (currentSettings) {
         setPhase('work', currentSettings);
-        if (currentSettings.autoStartPomodoros) setTimeout(() => startPhase('work'), 300);
+        if (currentSettings.autoStartPomodoros) setTimeout(() => startPhaseRef.current?.('work'), 300);
       }
     }
   };
@@ -192,11 +197,13 @@ export const TimerPage: React.FC = () => {
     if (isRunning) {
       intervalRef.current = setInterval(async () => {
         const current = useTimerStore.getState().secondsLeft;
-        if (current <= 5 && current > 1) { settingsRef.current?.soundEnabled && playSound('tick'); }
-        if (current <= 1) {
+        if (current <= 5 && current > 0) { settingsRef.current?.soundEnabled && playSound('tick'); }
+        if (current <= 0) {
+          // current is already 0 (we decremented it last tick) — now complete
           clearInterval(intervalRef.current!);
           await handleCompleteRef.current?.();
         } else {
+          // Decrement; when we reach 0 the display shows 0:00 for one full second
           setSecondsLeft(current - 1);
         }
       }, 1000);
@@ -235,6 +242,8 @@ export const TimerPage: React.FC = () => {
       }
     }
   }, [isLeader]);
+  // Keep startPhaseRef current so handleCompleteRef can always call the latest version.
+  startPhaseRef.current = startPhase;
 
   const handlePause = useCallback(async () => {
     if (!isLeader) return;
