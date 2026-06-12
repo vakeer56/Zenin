@@ -9,7 +9,9 @@ import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import toast from 'react-hot-toast';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
+import CalendarHeatmap from 'react-calendar-heatmap';
+import 'react-calendar-heatmap/dist/styles.css';
 
 const StatCard: React.FC<{
   icon: React.ReactNode;
@@ -58,6 +60,11 @@ export const AnalyticsPage: React.FC = () => {
   const { data: daily, isLoading: dailyLoading } = useQuery({
     queryKey: ['analytics', 'daily', days],
     queryFn: () => analyticsApi.daily(days).then((r) => r.data.data),
+  });
+
+  const { data: yearly, isLoading: yearlyLoading } = useQuery({
+    queryKey: ['analytics', 'yearly'],
+    queryFn: () => analyticsApi.daily(365).then((r) => r.data.data),
   });
 
   const { data: tasksData } = useQuery({
@@ -110,6 +117,13 @@ export const AnalyticsPage: React.FC = () => {
   }));
 
   const maxPomodoros = Math.max(...(chartData.map((d) => d.pomodoros) || [0]), 1);
+
+  const heatmapData = (yearly ?? []).map((d) => ({
+    date: d.date,
+    count: d.pomodoros,
+  }));
+  const today = new Date();
+  const startDate = subDays(today, 365);
 
   return (
     <div className="max-w-4xl mx-auto p-6 animate-fade-in">
@@ -249,6 +263,43 @@ export const AnalyticsPage: React.FC = () => {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        )}
+      </Card>
+
+      {/* Activity Heatmap */}
+      <Card className="mt-8">
+        <div className="mb-6">
+          <h2 className="font-semibold">Activity Map</h2>
+          <p className="text-white/40 text-xs mt-1">Your focus over the past year</p>
+        </div>
+        
+        {yearlyLoading ? (
+          <div className="h-32 flex items-center justify-center text-white/30">Loading…</div>
+        ) : (
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="min-w-[700px] pb-2">
+              <CalendarHeatmap
+                startDate={startDate}
+                endDate={today}
+                values={heatmapData}
+                classForValue={(value) => {
+                  if (!value || value.count === 0) {
+                    return 'color-empty';
+                  }
+                  if (value.count >= 8) return 'color-scale-5';
+                  if (value.count >= 6) return 'color-scale-4';
+                  if (value.count >= 4) return 'color-scale-3';
+                  if (value.count >= 2) return 'color-scale-2';
+                  return 'color-scale-1';
+                }}
+                titleForValue={(value: any) => {
+                  if (!value || !value.date) return 'No activity';
+                  return `${value.count} pomodoros on ${format(new Date(value.date), 'MMM d, yyyy')}`;
+                }}
+                showWeekdayLabels={true}
+              />
+            </div>
+          </div>
         )}
       </Card>
 

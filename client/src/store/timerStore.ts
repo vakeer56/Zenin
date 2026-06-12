@@ -32,7 +32,7 @@ interface TimerState {
   resetTimer: (settings: Settings) => void;
   setActiveTaskId: (id: string | null) => void;
   setCurrentSessionId: (id: string | null) => void;
-  markRunStart: () => void;
+  markRunStart: (overrideSeconds?: number) => void;
   clearRunStart: () => void;
   /** Compute true secondsLeft accounting for wall-clock elapsed since runStartedAt. */
   computeElapsed: () => number;
@@ -94,10 +94,10 @@ export const useTimerStore = create<TimerState>()(
       setActiveTaskId: (activeTaskId) => set({ activeTaskId }),
       setCurrentSessionId: (currentSessionId) => set({ currentSessionId }),
 
-      markRunStart: () =>
+      markRunStart: (overrideSeconds?: number) =>
         set((s) => ({
           runStartedAt: Date.now(),
-          runStartSecondsLeft: s.secondsLeft,
+          runStartSecondsLeft: overrideSeconds ?? s.secondsLeft,
         })),
 
       clearRunStart: () =>
