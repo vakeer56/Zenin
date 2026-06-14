@@ -122,6 +122,18 @@ const schemaStatements = [
   'CREATE INDEX IF NOT EXISTS "pomodoro_sessions_task_id_idx" ON "pomodoro_sessions" ("task_id")',
   'CREATE INDEX IF NOT EXISTS "refresh_tokens_user_id_idx" ON "refresh_tokens" ("user_id")',
   'CREATE INDEX IF NOT EXISTS "refresh_tokens_token_hash_idx" ON "refresh_tokens" ("token_hash")',
+  `CREATE TABLE IF NOT EXISTS "push_subscriptions" (
+    "id" TEXT PRIMARY KEY NOT NULL,
+    "user_id" TEXT NOT NULL,
+    "endpoint" TEXT NOT NULL UNIQUE,
+    "p256dh" TEXT NOT NULL,
+    "auth" TEXT NOT NULL,
+    "user_agent" TEXT,
+    "created_at" INTEGER NOT NULL,
+    "updated_at" INTEGER NOT NULL,
+    FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE
+  )`,
+  'CREATE INDEX IF NOT EXISTS "push_subscriptions_user_id_idx" ON "push_subscriptions" ("user_id")',
 ];
 
 let schemaReady: Promise<void> | null = null;

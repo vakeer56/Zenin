@@ -5,6 +5,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import './index.css';
 
+// ─── Service Worker Registration ───────────────────────────────────────────────
+// Register early so the SW is ready to receive push events even before
+// the user visits Settings. Silently skips on unsupported browsers.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('/sw.js', { scope: '/' })
+      .then((reg) => {
+        console.log('✅ Service Worker registered:', reg.scope);
+      })
+      .catch((err) => {
+        console.warn('⚠️ Service Worker registration failed:', err);
+      });
+  });
+}
+
 import { AuthPage } from './pages/AuthPage';
 import { AuthCallbackPage } from './pages/AuthCallbackPage';
 import { TimerPage } from './pages/TimerPage';

@@ -4,6 +4,7 @@ import { pomodoroSessions, tasks, settings } from '../db/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { z } from 'zod';
+import { sendPushToUser } from '../services/push.service';
 
 const startSessionSchema = z.object({
   taskId: z.string().uuid().optional(),
@@ -68,6 +69,30 @@ export const endSession = async (
           updatedAt: new Date(),
         })
         .where(eq(tasks.id, session.taskId));
+    }
+
+    // Fire push notification for completed sessions (non-blocking)
+    if (completed) {
+      const pushPayload =
+        session.type === 'work'
+          ? {
+              title: '🍅 Focus session complete!',
+              body: 'Great work! Time to take a break.',
+              url: '/timer',
+              icon: '/icon-192.png',
+              badge: '/icon-192.png',
+              tag: 'session-complete',
+            }
+          : {
+              title: '☕ Break is over!',
+              body: 'Ready to focus again? Let\'s go!',
+              url: '/timer',
+              icon: '/icon-192.png',
+              badge: '/icon-192.png',
+              tag: 'break-complete',
+            };
+      // Fire-and-forget — don't block the HTTP response
+      void sendPushToUser(req.userId!, pushPayload);
     }
 
     res.json({ success: true, data: session });

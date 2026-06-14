@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { settingsApi } from '../api';
 import { Card } from '../components/ui/Card';
 import type { Settings } from '../../../shared/types';
+import { usePushNotifications } from '../hooks/usePushNotifications';
+import { Bell, BellOff, BellRing, Smartphone, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 const DurationControl: React.FC<{
   label: string;
@@ -161,7 +163,7 @@ export const SettingsPage: React.FC = () => {
       </Card>
 
       {/* Sound */}
-      <Card>
+      <Card className="mb-4">
         <h2 className="font-semibold mb-2 text-white/80 text-sm uppercase tracking-wider">
           Notifications
         </h2>
@@ -172,6 +174,142 @@ export const SettingsPage: React.FC = () => {
           onChange={(v) => update('soundEnabled', v)}
         />
       </Card>
+
+      {/* Push Notifications */}
+      <PushNotificationsCard />
     </div>
+  );
+};
+
+// ─── Push Notifications Card ──────────────────────────────────────────────────
+
+const PushNotificationsCard: React.FC = () => {
+  const {
+    isSupported,
+    isIOS,
+    isStandalone,
+    permission,
+    isSubscribed,
+    isLoading,
+    subscribe,
+    unsubscribe,
+    error,
+  } = usePushNotifications();
+
+  // iOS, not yet installed on Home Screen
+  if (isIOS && !isStandalone) {
+    return (
+      <Card>
+        <h2 className="font-semibold mb-3 text-white/80 text-sm uppercase tracking-wider">
+          Push Notifications
+        </h2>
+        <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+          <Smartphone size={18} className="text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-300">Install to Home Screen first</p>
+            <p className="text-xs text-white/50 mt-1 leading-relaxed">
+              iOS only allows push notifications for installed PWAs. Tap{' '}
+              <span className="font-semibold text-white/70">Share</span> →{' '}
+              <span className="font-semibold text-white/70">Add to Home Screen</span> in
+              Safari, then open the app from there to enable notifications.
+            </p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Browser doesn't support push at all
+  if (!isSupported) {
+    return (
+      <Card>
+        <h2 className="font-semibold mb-3 text-white/80 text-sm uppercase tracking-wider">
+          Push Notifications
+        </h2>
+        <div className="flex items-center gap-3 py-2 text-white/40">
+          <BellOff size={16} />
+          <p className="text-sm">Push notifications are not supported on this browser.</p>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <h2 className="font-semibold mb-3 text-white/80 text-sm uppercase tracking-wider">
+        Push Notifications
+      </h2>
+
+      {/* Status row */}
+      <div className="flex items-center justify-between py-3 border-b border-white/5">
+        <div className="flex items-start gap-3">
+          {isSubscribed ? (
+            <BellRing size={16} className="text-primary-400 mt-0.5 shrink-0" />
+          ) : (
+            <Bell size={16} className="text-white/40 mt-0.5 shrink-0" />
+          )}
+          <div>
+            <p className="text-sm font-medium">
+              {isSubscribed ? 'Notifications enabled' : 'Notifications disabled'}
+            </p>
+            <p className="text-xs text-white/40 mt-0.5">
+              {isSubscribed
+                ? 'You will receive timer alerts even when the app is closed.'
+                : 'Get notified when your focus session or break ends.'}
+            </p>
+          </div>
+        </div>
+
+        {/* Toggle button */}
+        {permission !== 'denied' && (
+          <button
+            id="push-toggle-btn"
+            onClick={isSubscribed ? unsubscribe : subscribe}
+            disabled={isLoading}
+            className={`w-12 h-6 rounded-full relative transition-all duration-200 shrink-0 ${
+              isSubscribed ? 'bg-primary-500' : 'bg-white/15'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {isLoading ? (
+              <Loader2
+                size={12}
+                className="absolute inset-0 m-auto animate-spin text-white"
+              />
+            ) : (
+              <span
+                className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all duration-200 ${
+                  isSubscribed ? 'left-7' : 'left-1'
+                }`}
+              />
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Permission denied message */}
+      {permission === 'denied' && (
+        <div className="flex items-start gap-3 mt-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+          <AlertCircle size={16} className="text-red-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-white/60 leading-relaxed">
+            Notifications are blocked. To enable them, go to your device{' '}
+            <span className="font-semibold text-white/80">Settings → Zenin → Notifications</span>{' '}
+            and allow notifications.
+          </p>
+        </div>
+      )}
+
+      {/* Subscribed confirmation */}
+      {isSubscribed && permission === 'granted' && (
+        <div className="flex items-center gap-2 mt-3 text-xs text-emerald-400/70">
+          <CheckCircle2 size={13} />
+          <span>Push notifications active</span>
+        </div>
+      )}
+
+      {/* Error message */}
+      {error && (
+        <p className="mt-3 text-xs text-red-400/80">{error}</p>
+      )}
+    </Card>
   );
 };

@@ -76,12 +76,31 @@ export const refreshTokens = sqliteTable('refresh_tokens', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// ─── Push Subscriptions ──────────────────────────────────────────────────────
+export const pushSubscriptions = sqliteTable('push_subscriptions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  // The push subscription endpoint URL
+  endpoint: text('endpoint').notNull().unique(),
+  // P-256 ECDH public key from the browser (base64url)
+  p256dh: text('p256dh').notNull(),
+  // Authentication secret from the browser (base64url)
+  auth: text('auth').notNull(),
+  // Optional: user agent string for debugging
+  userAgent: text('user_agent'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
 // ─── Relations ────────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ one, many }) => ({
   settings: one(settings),
   tasks: many(tasks),
   sessions: many(pomodoroSessions),
   refreshTokens: many(refreshTokens),
+  pushSubscriptions: many(pushSubscriptions),
 }));
 
 export const settingsRelations = relations(settings, ({ one }) => ({
@@ -100,4 +119,8 @@ export const pomodoroSessionsRelations = relations(pomodoroSessions, ({ one }) =
 
 export const refreshTokensRelations = relations(refreshTokens, ({ one }) => ({
   user: one(users, { fields: [refreshTokens.userId], references: [users.id] }),
+}));
+
+export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one }) => ({
+  user: one(users, { fields: [pushSubscriptions.userId], references: [users.id] }),
 }));

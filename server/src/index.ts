@@ -13,6 +13,7 @@ import settingsRoutes from './routes/settings.routes';
 import tasksRoutes from './routes/tasks.routes';
 import sessionsRoutes from './routes/sessions.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import pushRoutes from './routes/push.routes';
 import { errorHandler, notFound } from './middleware/error.middleware';
 import { checkDbHealth, ensureSchema } from './db';
 
@@ -55,6 +56,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/push', pushRoutes);
 
 // ─── Serve Frontend When Available ────────────────────────────────────────────
 const clientDist = path.join(__dirname, '../../client/dist');

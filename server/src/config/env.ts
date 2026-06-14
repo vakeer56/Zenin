@@ -22,6 +22,10 @@ const envSchema = z.object({
   GOOGLE_CALLBACK_URL: z.string().default('http://localhost:5000/api/auth/google/callback'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
   COOKIE_SECRET: z.string().default('default-cookie-secret'),
+  // VAPID keys for Web Push notifications
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:admin@zenin.app'),
 });
 
 const parsed = envSchema.safeParse(process.env);
