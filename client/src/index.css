@@ -51,14 +51,14 @@
 }
 
 .react-calendar-heatmap .color-empty {
-  fill: rgba(255, 255, 255, 0.05);
+  fill: #161b22;
 }
 
-.react-calendar-heatmap .color-scale-1 { fill: rgba(239, 68, 68, 0.2); }
-.react-calendar-heatmap .color-scale-2 { fill: rgba(239, 68, 68, 0.4); }
-.react-calendar-heatmap .color-scale-3 { fill: rgba(239, 68, 68, 0.6); }
-.react-calendar-heatmap .color-scale-4 { fill: rgba(239, 68, 68, 0.8); }
-.react-calendar-heatmap .color-scale-5 { fill: rgba(239, 68, 68, 1.0); }
+.react-calendar-heatmap .color-scale-1 { fill: #0e4429; }
+.react-calendar-heatmap .color-scale-2 { fill: #006d32; }
+.react-calendar-heatmap .color-scale-3 { fill: #26a641; }
+.react-calendar-heatmap .color-scale-4 { fill: #39d353; }
+.react-calendar-heatmap .color-scale-5 { fill: #39d353; filter: brightness(1.15); }
 
 /* Rounded corners for rects */
 .react-calendar-heatmap rect {
